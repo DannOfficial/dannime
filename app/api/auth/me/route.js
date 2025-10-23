@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { connectDB } from "@/lib/mongodb"
 import User from "@/lib/models/User"
 import jwt from "jsonwebtoken"
+import { getUserLevelStats } from "@/lib/xpSystem"
 
 export const dynamic = "force-dynamic"
 
@@ -24,19 +25,23 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
     }
 
+    const levelStats = getUserLevelStats(user)
+
     return NextResponse.json({
       success: true,
       data: {
-        _id: user._id,
+        id: user.id,
         email: user.email,
-        username: user.username,
         name: user.name,
-        avatar: user.avatar,
+        image: user.image,
         role: user.role,
         level: user.level,
         xp: user.xp,
-        favorites: user.favorites,
-        watchHistory: user.watchHistory,
+        isAdmin: user.isAdmin,
+        emailVerified: user.emailVerified,
+        favorites: user.favorites || [],
+        watchHistory: user.watchHistory || [],
+        levelStats,
       },
     })
   } catch (error) {

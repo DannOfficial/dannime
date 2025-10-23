@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { connectDB } from "@/lib/mongodb"
 import User from "@/lib/models/User"
 import jwt from "jsonwebtoken"
+import { v4 as uuidv4 } from "uuid"
 
 export const dynamic = "force-dynamic"
 
@@ -60,19 +61,26 @@ export async function GET(request) {
     if (!user) {
       // Create new user
       user = await User.create({
+        id: uuidv4(),
         email: googleUser.email,
-        username: googleUser.name || googleUser.email.split("@")[0],
-        name: googleUser.name,
-        avatar: googleUser.picture,
+        name: googleUser.name || googleUser.email.split("@")[0],
+        image: googleUser.picture,
         provider: "google",
         providerId: googleUser.id,
-        verified: true,
+        emailVerified: true,
+        xp: 0,
+        level: 1,
+        role: "Bronze",
+        isAdmin: false,
+        lastLogin: new Date(),
       })
     } else {
-      // Update existing user
-      user.name = googleUser.name
-      user.avatar = googleUser.picture
+      user.name = googleUser.name || user.name
+      user.image = googleUser.picture
       user.lastLogin = new Date()
+      if (!user.providerId && user.provider === "google") {
+        user.providerId = googleUser.id
+      }
       await user.save()
     }
 

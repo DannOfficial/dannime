@@ -9,10 +9,10 @@ export async function GET(request) {
   // If no code, redirect to GitHub OAuth
   if (!code) {
     const githubAuthUrl = new URL("https://github.com/login/oauth/authorize")
-    githubAuthUrl.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID || "")
+    githubAuthUrl.searchParams.set("client_id", "Ov23li1QizDqw21No79r")
     githubAuthUrl.searchParams.set(
       "redirect_uri",
-      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/github`,
+      "https://dannime.biz.id/api/auth/github",
     )
     githubAuthUrl.searchParams.set("scope", "read:user user:email")
 
@@ -29,10 +29,10 @@ export async function GET(request) {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_CLIENT_ID || "",
-        client_secret: process.env.GITHUB_CLIENT_SECRET || "",
+        client_id: "Ov23li1QizDqw21No79r",
+        client_secret: "5b9acfb6b558a3eae646c2acb415a1bfa4a8a7f5",
         code,
-        redirect_uri: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/github`,
+        redirect_uri: "https://dannime.biz.id/api/auth/github",
       }),
     })
 
@@ -67,14 +67,14 @@ export async function GET(request) {
 
     // TODO: Create or update user in database
     // For now, redirect to home with success message
-    const redirectUrl = new URL("/", process.env.NEXTAUTH_URL || "http://localhost:3000")
+    const redirectUrl = new URL("/", "https://dannime.biz.id")
     redirectUrl.searchParams.set("auth", "success")
     redirectUrl.searchParams.set("provider", "github")
 
     return NextResponse.redirect(redirectUrl.toString())
   } catch (error) {
     console.error("GitHub OAuth error:", error)
-    const redirectUrl = new URL("/login", process.env.NEXTAUTH_URL || "http://localhost:3000")
+    const redirectUrl = new URL("/login", "https://dannime.biz.id")
     redirectUrl.searchParams.set("error", "oauth_failed")
     return NextResponse.redirect(redirectUrl.toString())
   }

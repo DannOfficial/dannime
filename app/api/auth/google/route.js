@@ -12,10 +12,10 @@ export async function GET(request) {
   // If no code, redirect to Google OAuth
   if (!code) {
     const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
-    googleAuthUrl.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID || "")
+    googleAuthUrl.searchParams.set("client_id", "393016557815-dov797ghjaavmm9as74g17ichq889l8u.apps.googleusercontent.com")
     googleAuthUrl.searchParams.set(
       "redirect_uri",
-      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/google`,
+      "https://dannime.biz.id/api/auth/google",
     )
     googleAuthUrl.searchParams.set("response_type", "code")
     googleAuthUrl.searchParams.set("scope", "openid email profile")
@@ -33,9 +33,9 @@ export async function GET(request) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         code,
-        client_id: process.env.GOOGLE_CLIENT_ID || "",
-        client_secret: process.env.GOOGLE_CLIENT_SECRET || "",
-        redirect_uri: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/google`,
+        client_id: "393016557815-dov797ghjaavmm9as74g17ichq889l8u.apps.googleusercontent.com",
+        client_secret: "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",
+        redirect_uri: "https://dannime.biz.id/api/auth/google",
         grant_type: "authorization_code",
       }),
     })
@@ -77,15 +77,13 @@ export async function GET(request) {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || "your-secret-key", {
+    const token = jwt.sign({ userId: user._id, email: user.email }, "dannime", {
       expiresIn: "7d",
     })
 
-    // Create response with redirect
-    const redirectUrl = new URL("/", process.env.NEXTAUTH_URL || "http://localhost:3000")
+    const redirectUrl = new URL("/", "https://dannime.biz.id")
     const response = NextResponse.redirect(redirectUrl.toString())
 
-    // Set token as HTTP-only cookie
     response.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -96,8 +94,8 @@ export async function GET(request) {
 
     return response
   } catch (error) {
-    console.error("Google OAuth error:", error)
-    const redirectUrl = new URL("/login", process.env.NEXTAUTH_URL || "http://localhost:3000")
+    console.error(error)
+    const redirectUrl = new URL("/login", "https://dannime.biz.id")
     redirectUrl.searchParams.set("error", "oauth_failed")
     return NextResponse.redirect(redirectUrl.toString())
   }

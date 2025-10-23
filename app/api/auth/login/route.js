@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb"
 import User from "@/lib/models/User"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
+import { getUserLevelStats } from "@/lib/xpSystem"
 
 export const dynamic = "force-dynamic"
 
@@ -35,8 +36,7 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
     }
 
-    // Check if user is verified
-    if (!user.verified) {
+    if (!user.emailVerified) {
       return NextResponse.json({ success: false, error: "Please verify your email before logging in" }, { status: 401 })
     }
 
@@ -45,25 +45,36 @@ export async function POST(request) {
     await user.save()
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || "your-secret-key", {
-      expiresIn: "7d",
-    })
+    const token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        id: user.id,
+        email: user.email,
+      },
+      process.env.JWT_SECRET || "dannime",
+      {
+        expiresIn: "7d",
+      },
+    )
+
+    const levelStats = getUserLevelStats(user)
 
     // Create response
     const response = NextResponse.json({
       success: true,
       data: {
-        _id: user._id,
+        id: user.id,
         email: user.email,
-        username: user.username,
         name: user.name,
-        avatar: user.avatar,
+        image: user.image,
         role: user.role,
         level: user.level,
         xp: user.xp,
-        favorites: user.favorites,
-        watchHistory: user.watchHistory,
-        isAdmin: user.role === "admin",
+        isAdmin: user.isAdmin,
+        emailVerified: user.emailVerified,
+        favorites: user.favorites || [],
+        watchHistory: user.watchHistory || [],
+        levelStats,
       },
     })
 

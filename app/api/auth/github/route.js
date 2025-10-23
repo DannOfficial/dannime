@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server"
+import { connectDB } from "@/lib/mongodb"
+import User from "@/models/User"
+import jwt from "jsonwebtoken"
 
 export const dynamic = "force-dynamic"
 
@@ -9,10 +12,10 @@ export async function GET(request) {
   // If no code, redirect to GitHub OAuth
   if (!code) {
     const githubAuthUrl = new URL("https://github.com/login/oauth/authorize")
-    githubAuthUrl.searchParams.set("client_id", "Ov23li1QizDqw21No79r")
+    githubAuthUrl.searchParams.set("client_id", process.env.GITHUB_CLIENT_ID || "")
     githubAuthUrl.searchParams.set(
       "redirect_uri",
-      "https://dannime.biz.id/api/auth/github",
+      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/github`,
     )
     githubAuthUrl.searchParams.set("scope", "read:user user:email")
 
@@ -29,10 +32,10 @@ export async function GET(request) {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        client_id: "Ov23li1QizDqw21No79r",
-        client_secret: "5b9acfb6b558a3eae646c2acb415a1bfa4a8a7f5",
+        client_id: process.env.GITHUB_CLIENT_ID || "",
+        client_secret: process.env.GITHUB_CLIENT_SECRET || "",
         code,
-        redirect_uri: "https://dannime.biz.id/api/auth/github",
+        redirect_uri: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/auth/github`,
       }),
     })
 
@@ -50,10 +53,10 @@ export async function GET(request) {
       },
     })
 
-    const userData = await userResponse.json()
+    const githubUser = await userResponse.json()
 
     // Get user email if not public
-    if (!userData.email) {
+    if (!githubUser.email) {
       const emailResponse = await fetch("https://api.github.com/user/emails", {
         headers: {
           Authorization: `Bearer ${tokens.access_token}`,
@@ -62,19 +65,54 @@ export async function GET(request) {
       })
       const emails = await emailResponse.json()
       const primaryEmail = emails.find((email) => email.primary)
-      userData.email = primaryEmail?.email
+      githubUser.email = primaryEmail?.email
     }
 
-    // TODO: Create or update user in database
-    // For now, redirect to home with success message
-    const redirectUrl = new URL("/", "https://dannime.biz.id")
-    redirectUrl.searchParams.set("auth", "success")
-    redirectUrl.searchParams.set("provider", "github")
+    await connectDB()
 
-    return NextResponse.redirect(redirectUrl.toString())
+    let user = await User.findOne({ email: githubUser.email })
+
+    if (!user) {
+      // Create new user
+      user = await User.create({
+        email: githubUser.email,
+        username: githubUser.login || githubUser.email.split("@")[0],
+        name: githubUser.name || githubUser.login,
+        avatar: githubUser.avatar_url,
+        provider: "github",
+        providerId: githubUser.id.toString(),
+        verified: true,
+      })
+    } else {
+      // Update existing user
+      user.name = githubUser.name || githubUser.login
+      user.avatar = githubUser.avatar_url
+      user.lastLogin = new Date()
+      await user.save()
+    }
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET || "your-secret-key", {
+      expiresIn: "7d",
+    })
+
+    // Create response with redirect
+    const redirectUrl = new URL("/", process.env.NEXTAUTH_URL || "http://localhost:3000")
+    const response = NextResponse.redirect(redirectUrl.toString())
+
+    // Set token as HTTP-only cookie
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    })
+
+    return response
   } catch (error) {
     console.error("GitHub OAuth error:", error)
-    const redirectUrl = new URL("/login", "https://dannime.biz.id")
+    const redirectUrl = new URL("/login", process.env.NEXTAUTH_URL || "http://localhost:3000")
     redirectUrl.searchParams.set("error", "oauth_failed")
     return NextResponse.redirect(redirectUrl.toString())
   }
